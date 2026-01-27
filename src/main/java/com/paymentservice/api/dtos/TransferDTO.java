@@ -10,7 +10,7 @@ public record TransferDTO(
         @Positive(message = "O valor da transferência deve ser positivo.")
         BigDecimal value,
         @NotNull(message = "O pagador é obrigatório.")
-        Long payer,
+        Long sender,
         @NotNull(message = "O beneficiário é obrigatório.")
         Long receiver) {
 }

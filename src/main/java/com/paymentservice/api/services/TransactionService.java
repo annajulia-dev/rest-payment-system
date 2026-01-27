@@ -1,10 +1,13 @@
 package com.paymentservice.api.services;
 
+import com.paymentservice.api.dtos.AuthorizationResponse;
 import com.paymentservice.api.dtos.TransferDTO;
+import com.paymentservice.api.exception.AuthorizationServiceUnavailableException;
 import com.paymentservice.api.exception.UnauthorizedTransactionException;
 import com.paymentservice.api.exception.UserNotFoundException;
 import com.paymentservice.api.model.Transaction;
 import com.paymentservice.api.model.User;
+import com.paymentservice.api.proxy.TransferAuthorizationProxy;
 import com.paymentservice.api.repository.TransactionRepository;
 import com.paymentservice.api.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -17,19 +20,26 @@ public class TransactionService {
 
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
+    private final TransferAuthorizationProxy transferAuthorizationProxy;
 
-    public TransactionService(UserRepository userRepository, TransactionRepository transactionRepository){
+    public TransactionService(UserRepository userRepository, TransactionRepository transactionRepository, TransferAuthorizationProxy transferAuthorizationProxy){
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
+        this.transferAuthorizationProxy = transferAuthorizationProxy;
     }
 
     @Transactional
     public Transaction transferMoney(TransferDTO data){
-        if(data.payer().equals( data.receiver())){
+        if(data.sender().equals( data.receiver())){
             throw new UnauthorizedTransactionException("Você não pode transferir para si mesmo.");
         }
+        try{
+            AuthorizationResponse authorization = transferAuthorizationProxy.authorizeTransfer();
+        } catch (Exception e) {
+            throw new AuthorizationServiceUnavailableException("Serviço de autorização indisponível.");
+        }
 
-        User sender = userRepository.findById( data.payer() )
+        User sender = userRepository.findById( data.sender() )
                 .orElseThrow(() -> new UserNotFoundException("Pagador não encontrado."));
 
         sender.validateTransactability( data.value() );
