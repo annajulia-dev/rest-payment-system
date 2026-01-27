@@ -1,6 +1,6 @@
 package com.paymentservice.api.infra;
 
-import com.paymentservice.api.exception.AuthorizationServiceUnavailableException;
+import com.paymentservice.api.exception.ServiceUnavailableException;
 import com.paymentservice.api.exception.InsufficientFundsException;
 import com.paymentservice.api.exception.UnauthorizedTransactionException;
 import com.paymentservice.api.exception.UserNotFoundException;
@@ -24,15 +24,22 @@ public class ControllerExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(pd);
     }
 
-    @ExceptionHandler({UnauthorizedTransactionException.class, InsufficientFundsException.class})
+    @ExceptionHandler(UnauthorizedTransactionException.class)
     public ResponseEntity<ProblemDetail> handleUnauthorizedUser(UnauthorizedTransactionException e){
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage());
         pd.setTitle("Erro de validação nas regras de negócio.");
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(pd);
     }
 
-    @ExceptionHandler(AuthorizationServiceUnavailableException.class)
-    public ResponseEntity<ProblemDetail> handleServiceUnavaible(AuthorizationServiceUnavailableException e){
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ResponseEntity<ProblemDetail> handleInsufficientFunds(InsufficientFundsException e){
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage());
+        pd.setTitle("Saldo insuficiente");
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(pd);
+    }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ProblemDetail> handleServiceUnavaible(ServiceUnavailableException e){
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
         pd.setTitle("Erro de Dependência Externa");
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(pd);

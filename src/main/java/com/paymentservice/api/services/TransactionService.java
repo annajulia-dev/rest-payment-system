@@ -2,7 +2,7 @@ package com.paymentservice.api.services;
 
 import com.paymentservice.api.dtos.AuthorizationResponse;
 import com.paymentservice.api.dtos.TransferDTO;
-import com.paymentservice.api.exception.AuthorizationServiceUnavailableException;
+import com.paymentservice.api.exception.ServiceUnavailableException;
 import com.paymentservice.api.exception.UnauthorizedTransactionException;
 import com.paymentservice.api.exception.UserNotFoundException;
 import com.paymentservice.api.model.Transaction;
@@ -13,6 +13,7 @@ import com.paymentservice.api.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -21,46 +22,68 @@ public class TransactionService {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final TransferAuthorizationProxy transferAuthorizationProxy;
+    private final NotificationService notificationService;
 
-    public TransactionService(UserRepository userRepository, TransactionRepository transactionRepository, TransferAuthorizationProxy transferAuthorizationProxy){
+    public TransactionService(UserRepository userRepository, TransactionRepository transactionRepository, TransferAuthorizationProxy transferAuthorizationProxy, NotificationService notificationService){
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.transferAuthorizationProxy = transferAuthorizationProxy;
+        this.notificationService = notificationService;
     }
 
     @Transactional
     public Transaction transferMoney(TransferDTO data){
-        if(data.sender().equals( data.receiver())){
+
+        validateTransfer(data);
+
+        User sender = findById(data.sender());
+        sender.validateTransactability();
+
+        User receiver = findById(data.receiver());
+
+        Transaction transaction = updateBalances(sender, receiver, data.value());
+
+        saveTransaction(sender, receiver, transaction);
+
+        notificationService.sendNotification();
+
+        return transaction;
+    }
+    private void validateTransfer(TransferDTO data){
+        if(data.sender().equals( data.receiver())){ // VERIFY IF TRANSFERATION IS FOR THE SAME ACCOUNT
             throw new UnauthorizedTransactionException("Você não pode transferir para si mesmo.");
         }
-        try{
-            AuthorizationResponse authorization = transferAuthorizationProxy.authorizeTransfer();
+
+
+        try{ // VERIFY AUTHORIZATION PROXY
+            AuthorizationResponse response = transferAuthorizationProxy.authorizeTransfer();
+            if(response == null || !response.data().authorization()){
+                throw new UnauthorizedTransactionException("Transferência não autorizada.");
+            }
         } catch (Exception e) {
-            throw new AuthorizationServiceUnavailableException("Serviço de autorização indisponível.");
+            throw new ServiceUnavailableException("Serviço de autorização indisponível.");
         }
+    }
 
-        User sender = userRepository.findById( data.sender() )
-                .orElseThrow(() -> new UserNotFoundException("Pagador não encontrado."));
+    private User findById(Long id){
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado: ID "+ id));
+    }
 
-        sender.validateTransactability( data.value() );
-
-        User receiver = userRepository.findById( data.receiver() )
-                .orElseThrow(() -> new UserNotFoundException("Beneficiário não encontrado."));
-
-        sender.setBalance( sender.getBalance().subtract( data.value() ) );
-        receiver.setBalance( receiver.getBalance().add( data.value() ) );
-
-        Transaction transaction = new Transaction(
-                data.value(),
+    private Transaction updateBalances(User sender, User receiver, BigDecimal value){
+        sender.debit(value);
+        receiver.credit(value);
+        return new Transaction(
+                value,
                 sender,
                 receiver,
                 LocalDateTime.now());
+    }
 
+    private void saveTransaction(User sender, User receiver, Transaction transaction){
         transactionRepository.save(transaction);
         userRepository.save(sender);
         userRepository.save(receiver);
-
-        return transaction;
     }
 
 }
