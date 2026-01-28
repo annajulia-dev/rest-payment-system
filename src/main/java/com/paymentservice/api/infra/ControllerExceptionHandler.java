@@ -4,6 +4,7 @@ import com.paymentservice.api.exception.ServiceUnavailableException;
 import com.paymentservice.api.exception.InsufficientFundsException;
 import com.paymentservice.api.exception.UnauthorizedTransactionException;
 import com.paymentservice.api.exception.UserNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +44,13 @@ public class ControllerExceptionHandler {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
         pd.setTitle("Erro de Dependência Externa");
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(pd);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ProblemDetail> handleDuplicateEntry(DataIntegrityViolationException e){
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+        pd.setTitle("Conflito de dados.");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(pd);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

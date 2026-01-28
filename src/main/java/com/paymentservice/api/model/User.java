@@ -1,5 +1,6 @@
 package com.paymentservice.api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.paymentservice.api.exception.InsufficientFundsException;
 import com.paymentservice.api.exception.UnauthorizedTransactionException;
 import jakarta.persistence.*;
@@ -30,6 +31,7 @@ public class User {
     private String lastName;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
     @Column(nullable = false)
