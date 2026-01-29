@@ -1,0 +1,26 @@
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mariadb://db:3306/payment_system
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=secret
+
+  db:
+    image: mariadb:10.6
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: secret
+      MARIADB_DATABASE: payment_system
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
