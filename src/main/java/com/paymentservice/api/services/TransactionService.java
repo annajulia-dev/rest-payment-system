@@ -33,13 +33,16 @@ public class TransactionService {
 
     @Transactional
     public Transaction transferMoney(TransferDTO data){
-
-        validateTransfer(data);
+        if(data.sender().equals( data.receiver())){
+            throw new UnauthorizedTransactionException("Você não pode transferir para si mesmo.");
+        }
 
         User sender = findById(data.sender());
+        User receiver = findById(data.receiver());
+
         sender.validateTransactability();
 
-        User receiver = findById(data.receiver());
+        validateTransfer(data);
 
         Transaction transaction = updateBalances(sender, receiver, data.value());
 
@@ -49,19 +52,17 @@ public class TransactionService {
 
         return transaction;
     }
+
+
     private void validateTransfer(TransferDTO data){
-        if(data.sender().equals( data.receiver())){ // VERIFY IF TRANSFERATION IS FOR THE SAME ACCOUNT
-            throw new UnauthorizedTransactionException("Você não pode transferir para si mesmo.");
-        }
-
-
+        AuthorizationResponse response;
         try{ // VERIFY AUTHORIZATION PROXY
-            AuthorizationResponse response = transferAuthorizationProxy.authorizeTransfer();
-            if(response == null || !response.data().authorization()){
-                throw new UnauthorizedTransactionException("Transferência não autorizada.");
-            }
+            response = transferAuthorizationProxy.authorizeTransfer();
         } catch (Exception e) {
             throw new ServiceUnavailableException("Serviço de autorização indisponível.");
+        }
+        if(response == null || !response.data().authorization()){
+            throw new UnauthorizedTransactionException("Transferência não autorizada.");
         }
     }
 
