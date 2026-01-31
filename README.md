@@ -18,6 +18,16 @@ O sistema é totalmente dockerizado e orquestra dois serviços principais:
 1.  **API Service:** Aplicação Spring Boot rodando na porta `8080`.
 2.  **Database Service:** Banco de dados MariaDB rodando na porta `3306`.
 
+## 🧪 Testes Automatizados e Qualidade
+
+O projeto segue uma estratégia rigorosa de testes unitários utilizando **JUnit 5** e **Mockito** (estilo BDD), focando na blindagem da camada de serviço (`TransactionService`).
+
+Principais cenários cobertos:
+* **Caminho Feliz (Happy Path):** Garante que transações válidas debitam, creditam e salvam os estados corretamente.
+* **Isolamento de Dependências:** Uso de Mocks para simular APIs externas (Autorizador e Notificador) e Repositórios.
+* **Cenários de Exceção:** Testes específicos para falhas de autorização, serviços indisponíveis (fallback) e validações de regras de negócio.
+* **Estratégia Fail-Fast:** Verificação de performance que assegura que o sistema **não** consome recursos externos (API de Autorização) se o usuário não tiver saldo suficiente (verificado via `shouldHaveNoInteractions`).
+
 ## 📋 Regras de Negócio
 
 O sistema segue regras estritas para garantir a consistência das transações:
