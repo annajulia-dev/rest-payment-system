@@ -1,7 +1,7 @@
 package com.paymentservice.api.dtos;
 
 import com.paymentservice.api.model.User;
-import com.paymentservice.api.model.UserType;
+import com.paymentservice.api.enums.UserType;
 
 import java.math.BigDecimal;
 

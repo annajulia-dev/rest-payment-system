@@ -1,4 +1,4 @@
-package com.paymentservice.api.model;
+package com.paymentservice.api.enums;
 
 public enum UserType {
     COMMON,

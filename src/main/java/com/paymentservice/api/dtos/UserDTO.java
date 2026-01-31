@@ -1,6 +1,6 @@
 package com.paymentservice.api.dtos;
 
-import com.paymentservice.api.model.UserType;
+import com.paymentservice.api.enums.UserType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

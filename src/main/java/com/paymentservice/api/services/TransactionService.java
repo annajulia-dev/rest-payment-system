@@ -2,6 +2,8 @@ package com.paymentservice.api.services;
 
 import com.paymentservice.api.dtos.AuthorizationResponse;
 import com.paymentservice.api.dtos.TransferDTO;
+import com.paymentservice.api.enums.TransactionMessage;
+import com.paymentservice.api.exception.InsufficientFundsException;
 import com.paymentservice.api.exception.ServiceUnavailableException;
 import com.paymentservice.api.exception.UnauthorizedTransactionException;
 import com.paymentservice.api.exception.UserNotFoundException;
@@ -34,13 +36,13 @@ public class TransactionService {
     @Transactional
     public Transaction transferMoney(TransferDTO data){
         if(data.sender().equals( data.receiver())){
-            throw new UnauthorizedTransactionException("Você não pode transferir para si mesmo.");
+            throw new UnauthorizedTransactionException(TransactionMessage.SAME_ACCOUNT.getMessage());
         }
 
         User sender = findById(data.sender());
-        User receiver = findById(data.receiver());
+        verifySenderEligibility(sender, data.value());
 
-        sender.validateTransactability();
+        User receiver = findById(data.receiver());
 
         validateTransfer(data);
 
@@ -53,22 +55,21 @@ public class TransactionService {
         return transaction;
     }
 
-
     private void validateTransfer(TransferDTO data){
         AuthorizationResponse response;
         try{ // VERIFY AUTHORIZATION PROXY
             response = transferAuthorizationProxy.authorizeTransfer();
         } catch (Exception e) {
-            throw new ServiceUnavailableException("Serviço de autorização indisponível.");
+            throw new ServiceUnavailableException(TransactionMessage.AUTHORIZATION_SERVICE_UNAVAILABLE.getMessage());
         }
         if(response == null || !response.data().authorization()){
-            throw new UnauthorizedTransactionException("Transferência não autorizada.");
+            throw new UnauthorizedTransactionException(TransactionMessage.UNAUTHORIZED.getMessage());
         }
     }
 
     private User findById(Long id){
         return userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado: ID "+ id));
+                .orElseThrow(() -> new UserNotFoundException(TransactionMessage.USER_NOT_FOUND.getMessage() + id));
     }
 
     private Transaction updateBalances(User sender, User receiver, BigDecimal value){
@@ -85,6 +86,14 @@ public class TransactionService {
         transactionRepository.save(transaction);
         userRepository.save(sender);
         userRepository.save(receiver);
+    }
+
+    private void verifySenderEligibility(User sender, BigDecimal value){
+        sender.validateTransactability();
+
+        if(!sender.hasSufficientFunds(value)){
+            throw new InsufficientFundsException(TransactionMessage.INSUFFICIENT_FUNDS.getMessage());
+        }
     }
 
 }

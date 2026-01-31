@@ -1,6 +1,8 @@
 package com.paymentservice.api.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.paymentservice.api.enums.TransactionMessage;
+import com.paymentservice.api.enums.UserType;
 import com.paymentservice.api.exception.InsufficientFundsException;
 import com.paymentservice.api.exception.UnauthorizedTransactionException;
 import jakarta.persistence.*;
@@ -39,14 +41,15 @@ public class User {
 
     public void validateTransactability(){
         if(this.userType == UserType.MERCHANT){
-            throw new UnauthorizedTransactionException();
+            throw new UnauthorizedTransactionException(TransactionMessage.MERCHANT_TRANSFER.getMessage());
         }
     }
 
+    public boolean hasSufficientFunds(BigDecimal amount){
+        return this.balance.compareTo(amount) >= 0;
+    }
+
     public void debit(BigDecimal amount){
-        if (this.balance.compareTo(amount) < 0){
-            throw new InsufficientFundsException();
-        }
         this.balance = this.balance.subtract(amount);
     }
 
